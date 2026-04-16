@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-04-16
+
+### Breaking Changes
+- 🎨 **Flutter `Color` type** — `color` parameter changed from `String?` to `Color?`, `colors` from `List<String>?` to `List<Color>?`
+- 🧩 **New API style** — Generated code now uses static getter accessors (like `assets.gen.dart`) instead of enum + Widget pattern
+  - Before: `IconFont(IconNames.home, color: '#ff0000')`
+  - After: `IconFont.home.svg(color: Colors.red)`
+- 📛 **Removed `IconNames` enum** — Icons are now accessed as static getters on the class directly
+- 📦 **Per-source data class** — Each source generates its own data class (`RData`, `IconFontData`, etc.) to avoid naming conflicts
+
+### Added
+- ✨ `{ClassName}Data` class with `.svg()` method for rendering icons
+- 🎨 Built-in `_ColorToHex` private extension — generated files are self-contained, no external color extension dependency
+- 📖 Updated README.md and README_CN.md with new API examples
+
+### Improved
+- 🧹 Cleaner generated code — no enum, no switch statement, no string-to-enum conversion
+- 🔍 Better IDE discoverability — type `R.` to see all icons via auto-complete
+
 ## [1.0.3] - 2025-07-19
 
 ### Fixed

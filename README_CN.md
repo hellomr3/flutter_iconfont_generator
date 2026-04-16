@@ -4,17 +4,18 @@
 
 中文文档 | [English](./README.md)
 
-> 一个用于 iconfont.cn 图标的 Dart/Flutter 代码生成器。将 iconfont.cn 图标转换为 Flutter 组件，支持 SVG 渲染、多源配置、多色彩图标和空安全。
+> 一个用于 iconfont.cn 图标的 Dart/Flutter 代码生成器。将 iconfont.cn 图标转换为 Flutter 组件，支持 SVG 渲染、多源配置、多色彩图标、Flutter `Color` 类型和空安全。
 
 ## ✨ 功能特性
 
-- 🚀 **命令行工具** - 简单的命令行接口
-- 🎨 **多色彩支持** - 支持多色彩图标渲染和自定义颜色
-- 📦 **纯组件** - 无需字体文件，使用 SVG 渲染减少包体积
-- 🔄 **自动生成** - 自动从 iconfont.cn 获取最新图标并生成 Dart 代码
-- 🛡️ **空安全** - 完整的 Dart 空安全支持
-- 📦 **多源支持** - 支持配置多个 iconfont 源，每个源独立的类名
-- ⚡ **简易安装** - 通过 dart pub global activate 全局安装
+- 🚀 **命令行工具** — 简单的命令行接口
+- 🎨 **多色彩支持** — 使用 Flutter `Color` 类型渲染多色彩图标
+- 📦 **纯组件** — 无需字体文件，使用 SVG 渲染减少包体积
+- 🔄 **自动生成** — 自动从 iconfont.cn 获取最新图标并生成 Dart 代码
+- 🛡️ **空安全** — 完整的 Dart 空安全支持
+- 📦 **多源支持** — 支持配置多个 iconfont 源，每个源独立的类名
+- ⚡ **简易安装** — 通过 `dart pub global activate` 全局安装
+- 🧩 **assets.gen.dart 风格 API** — 静态 getter 访问器，如 `R.home.svg()`，类似 flutter_gen
 
 ## 🚀 快速开始
 
@@ -22,15 +23,11 @@
 
 #### 方法一：全局安装（推荐）
 
-全局安装命令行工具：
-
 ```bash
 dart pub global activate flutter_iconfont_generator
 ```
 
 #### 方法二：添加为开发依赖
-
-在你的 `pubspec.yaml` 中添加：
 
 ```yaml
 dependencies:
@@ -62,17 +59,16 @@ null_safety: true
 ```yaml
 # iconfont.yaml
 sources:
-  - name: app
+  - name: r
     symbol_url: "//at.alicdn.com/t/font_xxx.js"
     save_dir: "./lib/generated"
     trim_icon_prefix: "icon"
     default_icon_size: 18
     null_safety: true
 
-  - name: admin
+  - name: icon_font
     symbol_url: "//at.alicdn.com/t/font_yyy.js"
     save_dir: "./lib/generated"
-    output_file: "admin_icons.dart"
     trim_icon_prefix: "icon"
     default_icon_size: 20
     null_safety: true
@@ -80,220 +76,141 @@ sources:
 
 ### 生成图标代码
 
-#### 方法一：命令行工具（推荐）
-
-全局安装后：
-
 ```bash
-# 使用 iconfont.yaml 配置生成图标
+# 全局安装后
 iconfont_generator
 
-# 显示详细输出
-iconfont_generator --verbose
-
-# 显示帮助
-iconfont_generator --help
-```
-
-#### 方法二：直接执行 Dart
-
-如果未全局安装：
-
-```bash
-# 从项目根目录运行
+# 或直接运行
 dart run flutter_iconfont_generator:iconfont_generator
+
+# 详细输出
+iconfont_generator --verbose
 ```
 
 ## 📖 使用方法
 
+### 生成代码结构
+
+每个 source 生成一个文件，包含：
+- `{ClassName}Data` 类 — 持有 SVG 构建器，提供 `.svg()` 方法
+- `{ClassName}` 类 — 包含每个图标的静态 getter
+
 ### 基本使用
 
-**单源：**
-
 ```dart
-import 'package:your_app/iconfont/iconfont.dart';
+import 'package:your_app/generated/r.dart';
 
-// 基本使用
-IconFont(IconNames.home)
+// 默认大小
+R.home.svg()
 
-// 带大小
-IconFont(IconNames.user, size: 24)
+// 自定义大小
+R.user.svg(size: 24)
 
-// 带颜色
-IconFont(IconNames.settings, size: 32, color: '#ff0000')
+// 使用 Flutter Color
+R.settings.svg(size: 32, color: Color(0xFFFF0000))
+
+// 使用 Colors 常量
+R.settings.svg(color: Colors.red)
 
 // 多色彩图标
-IconFont(IconNames.logo, size: 48, colors: ['#ff0000', '#00ff00', '#0000ff'])
+R.logo.svg(colors: [Colors.red, Colors.green, Colors.blue])
 ```
 
-**多源：**
+### 多源使用
 
 ```dart
-import 'package:your_app/generated/app.dart';
-import 'package:your_app/generated/admin_icons.dart';
+import 'package:your_app/generated/r.dart';
+import 'package:your_app/generated/icon_font.dart';
 
-// 使用 app 图标
-App(IconNames.home)
+// 源 "r"（默认大小 18）
+R.home.svg()
 
-// 使用 admin 图标
-Admin(IconNames.settings)
+// 源 "icon_font"（默认大小 20）
+IconFont.settings.svg(color: Colors.blue)
 ```
 
-### 命令行选项
+### API 参考
 
-```bash
-# 基本使用
-iconfont_generator
+#### `{ClassName}Data.svg()`
 
-# 指定配置文件
-iconfont_generator --config path/to/iconfont.yaml
-
-# 详细输出
-iconfont_generator --verbose
-
-# 显示帮助
-iconfont_generator --help
-```
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `size` | `double?` | 配置的 `default_icon_size` | 图标大小（宽高） |
+| `color` | `Color?` | `null` | 单色覆盖所有路径 |
+| `colors` | `List<Color>?` | `null` | 多色彩图标的逐路径颜色覆盖 |
+| `key` | `Key?` | `null` | Flutter Widget key |
 
 ## ⚙️ 配置参数
 
-### 单源配置参数
+### 单源配置
 
 | 参数 | 类型 | 默认值 | 说明 |
 |-----|------|--------|------|
-| `symbol_url` | String | - | **必填** iconfont.cn 的 Symbol 链接 |
-| `save_dir` | String | `"./lib/iconfont"` | 生成文件的保存目录 |
-| `trim_icon_prefix` | String | `"icon"` | 要移除的图标名前缀 |
+| `symbol_url` | String | — | **必填** iconfont.cn 的 Symbol 链接 |
+| `save_dir` | String | `./lib/iconfont` | 生成文件的保存目录 |
+| `trim_icon_prefix` | String | `icon` | 要移除的图标名前缀 |
 | `default_icon_size` | int | `18` | 默认图标大小 |
-| `null_safety` | bool | `true` | 是否生成 null safety 代码 |
+| `null_safety` | bool | `true` | 是否生成空安全代码 |
 
-### 多源配置参数
+### 多源配置
 
 | 参数 | 类型 | 默认值 | 说明 |
 |-----|------|--------|------|
-| `sources` | List | - | **必填** 图标源列表 |
-| `name` | String | - | **必填** 源名称，转换为大驼峰作为 widget 类名 |
-| `symbol_url` | String | - | **必填** iconfont.cn 的 Symbol 链接 |
-| `save_dir` | String | `"./lib/iconfont"` | 生成文件的保存目录 |
+| `sources` | List | — | **必填** 图标源列表 |
+| `name` | String | — | **必填** 源名称 → 大驼峰类名 |
+| `symbol_url` | String | — | **必填** iconfont.cn 的 Symbol 链接 |
+| `save_dir` | String | `./lib/iconfont` | 生成文件的保存目录 |
 | `output_file` | String | `{name}.dart` | 输出文件名 |
-| `trim_icon_prefix` | String | `"icon"` | 要移除的图标名前缀 |
+| `trim_icon_prefix` | String | `icon` | 要移除的图标名前缀 |
 | `default_icon_size` | int | `18` | 默认图标大小 |
-| `null_safety` | bool | `true` | 是否生成 null safety 代码 |
+| `null_safety` | bool | `true` | 是否生成空安全代码 |
 
-**重要说明**：`name` 字段会转换为大驼峰格式作为 widget 类名：
-- `app` → `App`
-- `admin` → `Admin`
-- `icon_font` → `IconFont`
+**`name` → 类名映射：**
+- `r` → `R`（数据类：`RData`）
+- `icon_font` → `IconFont`（数据类：`IconFontData`）
+- `admin` → `Admin`（数据类：`AdminData`）
 
 ## 🔗 获取 Symbol URL
 
 1. 访问 [iconfont.cn](https://www.iconfont.cn/)
-2. 创建或打开你的图标项目
-3. 进入项目设置（项目设置）
-4. 找到 "FontClass/Symbol前缀" 部分
-5. 复制 JavaScript URL（应该类似 `//at.alicdn.com/t/c/font_xxx_xxx.js`）
+2. 打开你的图标项目
+3. 进入项目设置
+4. 复制 Symbol JavaScript URL（如 `//at.alicdn.com/t/c/font_xxx_xxx.js`）
 
 ![Symbol URL Location](images/symbol-url.png)
 
 ## 🚧 故障排除
 
-### 常见问题
+| 问题 | 解决方案 |
+|------|----------|
+| 未找到配置文件 | 确保项目根目录有 `iconfont.yaml`，或使用 `--config` 指定 |
+| 未找到图标 | 验证 symbol URL 是否正确且可访问 |
+| 权限被拒绝 | 检查输出目录的写权限 |
 
-**"未找到配置文件"**
-- 确保你在项目根目录有 `iconfont.yaml` 文件
-- 或使用 `--config` 指定配置文件路径
-
-**"未找到 iconfont 配置"**
-- 检查你的 `iconfont.yaml` 是否有有效配置
-- 验证 YAML 语法是否正确
-
-**"请配置有效的 symbol_url"**
-- 检查你的 symbol URL 是否来自 iconfont.cn 且可访问
-- URL 应该以 `//at.alicdn.com/` 开头
-
-**"在 SVG 内容中未找到图标"**
-- 验证你的 symbol URL 是否正确
-- 检查你的 iconfont 项目是否有图标
-- 尝试在浏览器中访问该 URL
-
-**权限被拒绝**
-- 确保你对输出目录有写权限
-
-### 调试模式
-
-使用详细模式查看详细信息：
-
-```bash
-iconfont_generator --verbose
-```
-
-## 📱 使用示例
-
-**iconfont.yaml：**
-
-```yaml
-sources:
-  - name: app
-    symbol_url: "//at.alicdn.com/t/font_4663043_7hbwe75j25b.js"
-    save_dir: "./lib/generated"
-    trim_icon_prefix: "icon"
-    default_icon_size: 18
-```
-
-**使用：**
-
-```dart
-import 'package:demo/generated/app.dart';
-
-// 使用图标
-App(IconNames.home)
-
-// 自定义颜色
-App(IconNames.settings, color: '#ff0000')
-
-// 多色图标
-App(IconNames.logo, colors: ['#ff0000', '#00ff00'])
-```
-
-## 🤝 贡献指南
-
-欢迎提交 Issue 和 Pull Request！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 📄 许可证
-
-本项目基于 MIT 许可证，详情请参阅 [LICENSE](LICENSE) 文件。
-
-## 🔗 相关链接
-
-- [iconfont.cn](https://iconfont.cn) - 阿里巴巴矢量图标库
-- [Flutter SVG](https://pub.dev/packages/flutter_svg) - Flutter SVG 渲染插件
+使用 `iconfont_generator --verbose` 查看详细调试输出。
 
 ## 🔧 设计理念
 
 ### 为什么使用 SVG 而不是字体？
 
-1. **多色彩支持** - SVG 天然支持多色彩渲染
-2. **体积更小** - 只包含使用的图标，无冗余数据
-3. **更好的兼容性** - 不依赖系统字体，跨平台一致性更好
-4. **代码即图标** - 图标作为 Dart 代码存在，便于版本控制和管理
+1. **多色彩支持** — SVG 天然支持多色彩渲染
+2. **体积更小** — 只包含使用的图标
+3. **更好的兼容性** — 不依赖系统字体
+4. **代码即图标** — Dart 代码，便于版本控制
 
-### 核心优势
+### 为什么用静态 getter 而不是 enum + Widget？
 
-- **纯 Dart 实现** - 利用 Dart 生态，无需额外的运行时环境
-- **编译时生成** - 图标在编译时确定，运行时性能更好
-- **类型安全** - 通过枚举提供类型安全的图标引用
-- **多源支持** - 独立配置和管理多个 iconfont 源
+新 API（`R.home.svg()`）灵感来自 [flutter_gen](https://pub.dev/packages/flutter_gen) 的 `assets.gen.dart` 模式：
+
+- **可发现** — IDE 自动补全在 `R.` 后显示所有可用图标
+- **灵活** — `.svg()` 返回 `Widget`，参数为可选命名参数
+- **类型安全颜色** — 使用 Flutter `Color` 而非十六进制字符串
+- **无枚举样板** — 生成代码中无 `IconNames` 枚举和 switch 语句
 
 ## 📢 项目说明
 
-本项目是基于 [flutter-iconfont-cli](https://github.com/iconfont-cli/flutter-iconfont-cli) 的纯 Dart 重构版本。由于原仓库不再维护，故使用新仓库继续维护和发展该项目。
+基于 [flutter-iconfont-cli](https://github.com/iconfont-cli/flutter-iconfont-cli)（已停止维护）的纯 Dart 重写版本。
 
----
+## 📄 许可证
 
-如果这个项目对你有帮助，请给个 ⭐️ Star 支持一下！
+MIT — 详见 [LICENSE](LICENSE)。
