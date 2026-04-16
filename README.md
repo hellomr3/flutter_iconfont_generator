@@ -4,15 +4,16 @@
 
 [中文文档](./README_CN.md) | English
 
-> A Dart/Flutter code generator for iconfont.cn icons. Convert iconfont.cn icons to Flutter widgets with SVG rendering, supporting multi-color icons and null safety.
+> A Dart/Flutter code generator for iconfont.cn icons. Convert iconfont.cn icons to Flutter widgets with SVG rendering, supporting multi-source, multi-color icons and null safety.
 
 ## ✨ Features
 
-- 🚀 **Command Line Tool** - Simple command-line interface, no build_runner needed
-- 🎨 **Multi-color Support** - Render multi-color icons with custom color support  
+- 🚀 **Command Line Tool** - Simple command-line interface
+- 🎨 **Multi-color Support** - Render multi-color icons with custom color support
 - 📦 **Pure Components** - No font files needed, uses SVG rendering for smaller bundle size
 - 🔄 **Automated Generation** - Automatically fetch latest icons from iconfont.cn and generate Dart code
 - 🛡️ **Null Safety** - Full Dart null safety support
+- 📦 **Multi-source Support** - Configure multiple iconfont sources with different class names
 - ⚡ **Easy Installation** - Global installation via dart pub global activate
 
 ## 🚀 Quick Start
@@ -38,21 +39,43 @@ dependencies:
   flutter_svg: ^2.0.0
 
 dev_dependencies:
-  flutter_iconfont_generator: ^2.0.0
+  flutter_iconfont_generator: ^1.0.0
 ```
 
 ### Configuration
 
-Add iconfont configuration to your `pubspec.yaml`:
+Create an `iconfont.yaml` file in your project root:
+
+**Single source:**
 
 ```yaml
-# IconFont configuration
-iconfont:
-  symbol_url: "//at.alicdn.com/t/font_xxx.js"  # Get from iconfont.cn
-  save_dir: "./lib/iconfont"                    # Output directory
-  trim_icon_prefix: "icon"                      # Remove icon name prefix
-  default_icon_size: 18                         # Default icon size
-  null_safety: true                             # Enable null safety
+# iconfont.yaml
+symbol_url: "//at.alicdn.com/t/font_xxx.js"
+save_dir: "./lib/iconfont"
+trim_icon_prefix: "icon"
+default_icon_size: 18
+null_safety: true
+```
+
+**Multiple sources:**
+
+```yaml
+# iconfont.yaml
+sources:
+  - name: app
+    symbol_url: "//at.alicdn.com/t/font_xxx.js"
+    save_dir: "./lib/generated"
+    trim_icon_prefix: "icon"
+    default_icon_size: 18
+    null_safety: true
+
+  - name: admin
+    symbol_url: "//at.alicdn.com/t/font_yyy.js"
+    save_dir: "./lib/generated"
+    output_file: "admin_icons.dart"
+    trim_icon_prefix: "icon"
+    default_icon_size: 20
+    null_safety: true
 ```
 
 ### Generate Icon Code
@@ -62,11 +85,8 @@ iconfont:
 After global installation:
 
 ```bash
-# Generate icons using pubspec.yaml configuration
+# Generate icons using iconfont.yaml configuration
 iconfont_generator
-
-# Generate with custom parameters
-iconfont_generator --url "//at.alicdn.com/t/font_xxx.js" --output lib/icons
 
 # Show verbose output
 iconfont_generator --verbose
@@ -82,14 +102,13 @@ If not globally installed:
 ```bash
 # Run from your project root
 dart run flutter_iconfont_generator:iconfont_generator
-
-# Or if you added it as a dev dependency
-dart run flutter_iconfont_generator
 ```
 
 ## 📖 Usage
 
 ### Basic Usage
+
+**Single source:**
 
 ```dart
 import 'package:your_app/iconfont/iconfont.dart';
@@ -107,53 +126,38 @@ IconFont(IconNames.settings, size: 32, color: '#ff0000')
 IconFont(IconNames.logo, size: 48, colors: ['#ff0000', '#00ff00', '#0000ff'])
 ```
 
+**Multiple sources:**
+
+```dart
+import 'package:your_app/generated/app.dart';
+import 'package:your_app/generated/admin_icons.dart';
+
+// Use app icons
+App(IconNames.home)
+
+// Use admin icons
+Admin(IconNames.settings)
+```
+
 ### Command Line Options
 
 ```bash
 # Basic usage
 iconfont_generator
 
-# Custom options
-iconfont_generator \
-  --url "//at.alicdn.com/t/c/font_4937193_3aohv86wocr.js" \
-  --output lib/icons \
-  --prefix icon \
-  --size 24 \
-  --verbose
+# Custom config file
+iconfont_generator --config path/to/iconfont.yaml
 
-# Options:
-#   -h, --help      Show usage help
-#   -v, --verbose   Show verbose output
-#   -c, --config    Path to config file (default: pubspec.yaml)
-#   -u, --url       IconFont symbol URL (overrides config)
-#   -o, --output    Output directory (overrides config)
-#   -p, --prefix    Icon prefix to trim (overrides config)
-#   -s, --size      Default icon size (overrides config)
-```
+# Verbose output
+iconfont_generator --verbose
 
-### Single Color Icons
-
-```dart
-// Using custom color
-IconFont(
-  IconNames.alipay,
-  size: 32,
-  color: 'ff0000',  // Without # prefix
-)
-```
-
-### Multi-color Icons
-
-```dart
-// Multi-color icons
-IconFont(
-  IconNames.colorful_icon,
-  size: 32,
-  colors: ['ff0000', '00ff00', '0000ff'],
-)
+# Show help
+iconfont_generator --help
 ```
 
 ## 🔧 Configuration Options
+
+### Single Source Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -162,6 +166,24 @@ IconFont(
 | `trim_icon_prefix` | String | `icon` | Prefix to remove from icon names |
 | `default_icon_size` | int | `18` | Default size for icons |
 | `null_safety` | bool | `true` | Enable null safety in generated code |
+
+### Multiple Sources Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `sources` | List | - | Required. List of icon sources |
+| `name` | String | - | Required. Source name, converted to PascalCase for widget class name |
+| `symbol_url` | String | - | Required. JavaScript URL from iconfont.cn |
+| `save_dir` | String | `./lib/iconfont` | Output directory for generated files |
+| `output_file` | String | `{name}.dart` | Output file name |
+| `trim_icon_prefix` | String | `icon` | Prefix to remove from icon names |
+| `default_icon_size` | int | `18` | Default size for icons |
+| `null_safety` | bool | `true` | Enable null safety in generated code |
+
+**Important**: The `name` field is converted to PascalCase for the widget class name:
+- `app` → `App`
+- `admin` → `Admin`
+- `icon_font` → `IconFont`
 
 ## 🔗 Getting Your Symbol URL
 
@@ -177,8 +199,13 @@ IconFont(
 
 ### Common Issues
 
+**"Configuration file not found"**
+- Make sure you have an `iconfont.yaml` file in your project root
+- Or use `--config` to specify the config file path
+
 **"No iconfont configuration found"**
-- Make sure you have the `iconfont:` section in your `pubspec.yaml`
+- Check that your `iconfont.yaml` has valid configuration
+- Verify the YAML syntax is correct
 
 **"Please configure a valid symbol_url"**
 - Check that your symbol URL is from iconfont.cn and is accessible
@@ -192,30 +219,6 @@ IconFont(
 **Permission denied**
 - Make sure you have write permissions to the output directory
 
-**"Conflicting outputs" - Build conflicts with other generators**
-- If you encounter conflicts like "Both xxx and flutter_iconfont_generator:iconfont_builder may output", create or modify your `build.yaml` file to limit the builder scope:
-
-```yaml
-targets:
-  $default:
-    builders:
-      flutter_iconfont_generator:iconfont_builder:
-        enabled: true
-        generate_for:
-          - lib/iconfont/**
-          - lib/**/iconfont.dart
-        options:
-          include: 
-            - "lib/iconfont/**"
-            - "lib/**/iconfont.dart"
-```
-
-- Alternatively, run the command-line tool instead of build_runner:
-```bash
-# Use command-line tool to avoid build conflicts
-iconfont_generator
-```
-
 ### Debug Mode
 
 Use verbose mode to see detailed information:
@@ -226,36 +229,31 @@ iconfont_generator --verbose
 
 ## 📱 Example
 
-Check out the [example app](example_app/) for a complete implementation showing all features.
+**iconfont.yaml:**
 
-## 🤝 Contributing
+```yaml
+sources:
+  - name: app
+    symbol_url: "//at.alicdn.com/t/font_4663043_7hbwe75j25b.js"
+    save_dir: "./lib/generated"
+    trim_icon_prefix: "icon"
+    default_icon_size: 18
+```
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+**Usage:**
 
-## 📄 License
+```dart
+import 'package:demo/generated/app.dart';
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+// Use the icon
+App(IconNames.home)
 
-## 🙏 Acknowledgments
+// With custom color
+App(IconNames.settings, color: '#ff0000')
 
-- Thanks to [iconfont.cn](https://iconfont.cn) for providing excellent icon service
-- Inspired by similar tools in the React ecosystem
-
-## 🔧 Design Philosophy
-
-### Why SVG instead of fonts?
-
-1. **Multi-color Support** - SVG naturally supports multi-color rendering
-2. **Smaller Bundle Size** - Only includes used icons, no redundant data
-3. **Better Compatibility** - No dependency on system fonts, better cross-platform consistency
-4. **Code as Icons** - Icons exist as Dart code, easier for version control and management
-
-### Core Advantages
-
-- **Pure Dart Implementation** - Leverages Dart ecosystem, no additional runtime environment needed
-- **Compile-time Generation** - Icons are determined at compile time, better runtime performance
-- **Type Safety** - Provides type-safe icon references through enums
-- **On-demand Loading** - Only generates icons actually used in the project
+// With multiple colors
+App(IconNames.logo, colors: ['#ff0000', '#00ff00'])
+```
 
 ## 🤝 Contributing
 
@@ -275,7 +273,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [iconfont.cn](https://iconfont.cn) - Alibaba Vector Icon Library
 - [Flutter SVG](https://pub.dev/packages/flutter_svg) - Flutter SVG rendering plugin
-- [build_runner](https://pub.dev/packages/build_runner) - Dart code generation tool
+
+## 🔧 Design Philosophy
+
+### Why SVG instead of fonts?
+
+1. **Multi-color Support** - SVG naturally supports multi-color rendering
+2. **Smaller Bundle Size** - Only includes used icons, no redundant data
+3. **Better Compatibility** - No dependency on system fonts, better cross-platform consistency
+4. **Code as Icons** - Icons exist as Dart code, easier for version control and management
+
+### Core Advantages
+
+- **Pure Dart Implementation** - Leverages Dart ecosystem, no additional runtime environment needed
+- **Compile-time Generation** - Icons are determined at compile time, better runtime performance
+- **Type Safety** - Provides type-safe icon references through enums
+- **Multi-source Support** - Configure multiple iconfont sources independently
 
 ## 📢 Project Background
 

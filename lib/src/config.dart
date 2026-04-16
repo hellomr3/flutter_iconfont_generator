@@ -1,162 +1,257 @@
-/// Configuration model for iconfont generation.
+/// Configuration model for a single iconfont source.
 ///
-/// This class defines all the settings needed to generate Flutter icon widgets
-/// from iconfont.cn icons. It handles configuration parsing from pubspec.yaml
-/// and provides sensible defaults for all optional settings.
+/// This class defines settings for one iconfont source with a unique name
+/// and output file. Multiple sources can be configured in iconfont.yaml.
 ///
 /// ## Usage
 ///
-/// ### From pubspec.yaml configuration
-/// ```dart
-/// final config = IconFontConfig.fromMap({
-///   'symbol_url': '//at.alicdn.com/t/font_123.js',
-///   'save_dir': './lib/icons',
-///   'trim_icon_prefix': 'icon',
-///   'default_icon_size': 24,
-///   'null_safety': true,
-/// });
+/// ### From iconfont.yaml configuration
+/// ```yaml
+/// sources:
+///   - name: main
+///     symbol_url: '//at.alicdn.com/t/font_123.js'
+///     trim_icon_prefix: 'icon'
+///   - name: secondary
+///     symbol_url: '//at.alicdn.com/t/font_456.js'
+///     output_file: 'secondary_icons.dart'
 /// ```
 ///
 /// ### Direct instantiation
 /// ```dart
-/// final config = IconFontConfig(
+/// final source = IconFontSource(
+///   name: 'main',
 ///   symbolUrl: 'https://at.alicdn.com/t/font_123.js',
-///   saveDir: './lib/my_icons',
-///   trimIconPrefix: 'my-icon',
+///   saveDir: './lib/icons',
+///   outputFile: 'main_icons.dart',
+///   trimIconPrefix: 'icon',
 ///   defaultIconSize: 20,
 ///   nullSafety: true,
 /// );
 /// ```
-///
-/// ### Converting to/from Map
-/// ```dart
-/// final map = config.toMap();
-/// final newConfig = IconFontConfig.fromMap(map);
-/// ```
-class IconFontConfig {
+class IconFontSource {
+  /// Unique identifier for this icon source.
+  ///
+  /// This name is used to generate the output file name if not specified.
+  /// It also helps identify different icon sources in logs and errors.
+  ///
+  /// Example: `main`, `secondary`, `admin`
+  final String name;
+
   /// The URL to fetch iconfont symbols from.
   ///
   /// This should be your iconfont.cn project's symbol URL, which typically
   /// looks like `//at.alicdn.com/t/font_xxx.js` or can include the full
   /// protocol like `https://at.alicdn.com/t/font_xxx.js`.
   ///
-  /// The fetcher will automatically:
-  /// - Add HTTPS protocol if missing
-  /// - Convert .symbol URLs to .js URLs
-  /// - Handle relative protocol URLs (starting with //)
-  ///
   /// Example: `//at.alicdn.com/t/font_123456_abcdef.js`
   final String symbolUrl;
 
   /// The directory where generated icon files will be saved.
-  ///
-  /// This path is relative to your project root. The directory will be
-  /// created automatically if it doesn't exist. All existing .dart files
-  /// in this directory will be cleaned before generation.
   ///
   /// Default: `./lib/iconfont`
   ///
   /// Examples:
   /// - `./lib/icons`
   /// - `./lib/generated/iconfont`
-  /// - `./packages/ui/lib/icons`
   final String saveDir;
+
+  /// The output file name for this source.
+  ///
+  /// If not specified, defaults to `{name}.dart` (e.g., `main.dart`).
+  /// This file will be generated in the [saveDir] directory.
+  ///
+  /// Example: `main_icons.dart`, `secondary_icons.dart`
+  final String? outputFile;
 
   /// The prefix to trim from icon names when generating enum values.
   ///
-  /// Most iconfont.cn icons have a common prefix (like "icon-") that you
-  /// may want to remove for cleaner enum names. For example, if your
-  /// icons are named "icon-home", "icon-user", setting this to "icon"
-  /// will generate enum values `home`, `user` instead of `iconHome`, `iconUser`.
-  ///
   /// Default: `icon`
-  ///
-  /// Examples:
-  /// - `icon` → "icon-home" becomes "home"
-  /// - `my-icon` → "my-icon-settings" becomes "settings"
-  /// - `` (empty) → no trimming applied
   final String trimIconPrefix;
 
   /// The default size for generated icon widgets.
   ///
-  /// This value will be used as the default `size` parameter in the
-  /// generated IconFont widget constructor. Users can still override
-  /// this by passing a different size when using the widget.
-  ///
   /// Default: `18`
-  ///
-  /// Example usage:
-  /// ```dart
-  /// // Uses default size (18)
-  /// IconFont(IconNames.home)
-  ///
-  /// // Override with custom size
-  /// IconFont(IconNames.home, size: 24)
-  /// ```
   final int defaultIconSize;
 
   /// Whether to generate null-safe code.
   ///
-  /// When `true`, the generated code will use null safety syntax including:
-  /// - `String?` for optional color parameters
-  /// - `super.key` for widget keys
-  /// - Null-aware operators where appropriate
-  ///
-  /// When `false`, generates legacy Dart code compatible with older versions.
-  ///
   /// Default: `true`
-  ///
-  /// It's recommended to keep this `true` for modern Flutter projects.
   final bool nullSafety;
 
-  /// Creates a new IconFontConfig with the specified settings.
-  ///
-  /// All parameters are required when using this constructor. For optional
-  /// parameters with defaults, use [IconFontConfig.fromMap] instead.
-  ///
-  /// Parameters:
-  /// - [symbolUrl]: The iconfont.cn symbol URL to fetch icons from
-  /// - [saveDir]: Directory to save generated files
-  /// - [trimIconPrefix]: Prefix to remove from icon names
-  /// - [defaultIconSize]: Default size for icon widgets
-  /// - [nullSafety]: Whether to generate null-safe code
-  const IconFontConfig({
+  /// Creates a new IconFontSource with the specified settings.
+  const IconFontSource({
+    required this.name,
     required this.symbolUrl,
-    required this.saveDir,
-    required this.trimIconPrefix,
-    required this.defaultIconSize,
-    required this.nullSafety,
+    this.saveDir = './lib/iconfont',
+    this.outputFile,
+    this.trimIconPrefix = 'icon',
+    this.defaultIconSize = 18,
+    this.nullSafety = true,
   });
+
+  /// Creates an IconFontSource from a configuration map.
+  ///
+  /// Expected keys:
+  /// - `name` (required): Source identifier
+  /// - `symbol_url` (required): Iconfont.cn symbol URL
+  /// - `save_dir` (optional): Output directory
+  /// - `output_file` (optional): Output file name
+  /// - `trim_icon_prefix` (optional): Prefix to trim
+  /// - `default_icon_size` (optional): Default icon size
+  /// - `null_safety` (optional): Generate null-safe code
+  factory IconFontSource.fromMap(Map<String, dynamic> map) {
+    return IconFontSource(
+      name: map['name'] as String? ??
+          (throw ArgumentError('Source name is required')),
+      symbolUrl: map['symbol_url'] as String? ??
+          (throw ArgumentError('symbol_url is required for source ${map['name']}')),
+      saveDir: (map['save_dir'] as String?) ?? './lib/iconfont',
+      outputFile: map['output_file'] as String?,
+      trimIconPrefix: (map['trim_icon_prefix'] as String?) ?? 'icon',
+      defaultIconSize: (map['default_icon_size'] as int?) ?? 18,
+      nullSafety: (map['null_safety'] as bool?) ?? true,
+    );
+  }
+
+  /// Gets the output file name for this source.
+  ///
+  /// Returns the configured [outputFile] or generates one from [name].
+  String get outputFileName => outputFile ?? '$name.dart';
+
+  /// Gets the widget class name for this source.
+  ///
+  /// Converts the [name] to PascalCase format for use as a Dart class name.
+  /// Examples:
+  /// - `main` → `MainIcon`
+  /// - `admin` → `AdminIcon`
+  /// - `icon_font` → `IconFontIcon`
+  String get className {
+    // Convert to PascalCase
+    final parts = name.split(RegExp(r'[_\-]'));
+    final pascalCase = parts.map((part) {
+      if (part.isEmpty) return '';
+      return part[0].toUpperCase() + part.substring(1);
+    }).join();
+
+    return '$pascalCase';
+  }
+
+  /// Converts this source configuration to a map representation.
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'symbol_url': symbolUrl,
+      'save_dir': saveDir,
+      'output_file': outputFile,
+      'trim_icon_prefix': trimIconPrefix,
+      'default_icon_size': defaultIconSize,
+      'null_safety': nullSafety,
+    };
+  }
+}
+
+/// Configuration model for iconfont generation.
+///
+/// This class defines all the settings needed to generate Flutter icon widgets
+/// from iconfont.cn icons. It supports both single source (legacy) and
+/// multiple sources (new) configurations.
+///
+/// ## Usage
+///
+/// ### Single source (legacy)
+/// ```yaml
+/// symbol_url: "//at.alicdn.com/t/font_123.js"
+/// save_dir: "./lib/icons"
+/// trim_icon_prefix: "icon"
+/// ```
+///
+/// ### Multiple sources (new)
+/// ```yaml
+/// sources:
+///   - name: main
+///     symbol_url: "//at.alicdn.com/t/font_123.js"
+///   - name: secondary
+///     symbol_url: "//at.alicdn.com/t/font_456.js"
+///     output_file: "secondary_icons.dart"
+/// ```
+class IconFontConfig {
+  /// List of iconfont sources to generate.
+  ///
+  /// When using multiple sources, each source will generate a separate file
+  /// with its own icon set and enum.
+  final List<IconFontSource> sources;
+
+  /// Whether this is a multi-source configuration.
+  bool get isMultiSource => sources.length > 1;
+
+  /// Creates a new IconFontConfig with multiple sources.
+  const IconFontConfig({required this.sources});
+
+  /// Creates a single-source IconFontConfig (legacy format).
+  ///
+  /// This constructor is used for backward compatibility with the old
+  /// configuration format that only supported a single symbol_url.
+  factory IconFontConfig.single({
+    required String symbolUrl,
+    String saveDir = './lib/iconfont',
+    String trimIconPrefix = 'icon',
+    int defaultIconSize = 18,
+    bool nullSafety = true,
+  }) {
+    return IconFontConfig(
+      sources: [
+        IconFontSource(
+          name: 'iconfont',
+          symbolUrl: symbolUrl,
+          saveDir: saveDir,
+          outputFile: 'iconfont.dart',
+          trimIconPrefix: trimIconPrefix,
+          defaultIconSize: defaultIconSize,
+          nullSafety: nullSafety,
+        ),
+      ],
+    );
+  }
 
   /// Creates an IconFontConfig from a configuration map.
   ///
-  /// This factory constructor is typically used to parse configuration
-  /// from pubspec.yaml or other configuration sources. It provides
-  /// sensible defaults for all missing values.
+  /// This factory constructor supports both legacy (single source) and
+  /// new (multiple sources) configuration formats.
   ///
-  /// ## Default values:
-  /// - `symbol_url`: `` (empty string - must be provided)
-  /// - `save_dir`: `./lib/iconfont`
-  /// - `trim_icon_prefix`: `icon`
-  /// - `default_icon_size`: `18`
-  /// - `null_safety`: `true`
-  ///
-  /// Parameters:
-  /// - [map]: Configuration map with string keys and dynamic values
-  ///
-  /// Returns:
-  /// - A new IconFontConfig instance with provided or default values
-  ///
-  /// Example:
+  /// ## Legacy format (single source):
   /// ```dart
   /// final config = IconFontConfig.fromMap({
   ///   'symbol_url': '//at.alicdn.com/t/font_123.js',
-  ///   'default_icon_size': 24,
-  ///   // Other values will use defaults
+  ///   'save_dir': './lib/icons',
+  /// });
+  /// ```
+  ///
+  /// ## New format (multiple sources):
+  /// ```dart
+  /// final config = IconFontConfig.fromMap({
+  ///   'sources': [
+  ///     {'name': 'main', 'symbol_url': '//at.alicdn.com/t/font_123.js'},
+  ///     {'name': 'secondary', 'symbol_url': '//at.alicdn.com/t/font_456.js'},
+  ///   ],
   /// });
   /// ```
   factory IconFontConfig.fromMap(Map<String, dynamic> map) {
-    return IconFontConfig(
+    // Check for new multi-source format
+    if (map.containsKey('sources')) {
+      final sourcesList = map['sources'] as List;
+      final sources = sourcesList
+          .map((item) => IconFontSource.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+
+      if (sources.isEmpty) {
+        throw ArgumentError('At least one source must be configured');
+      }
+
+      return IconFontConfig(sources: sources);
+    }
+
+    // Legacy single source format
+    return IconFontConfig.single(
       symbolUrl: (map['symbol_url'] as String?) ?? '',
       saveDir: (map['save_dir'] as String?) ?? './lib/iconfont',
       trimIconPrefix: (map['trim_icon_prefix'] as String?) ?? 'icon',
@@ -165,27 +260,37 @@ class IconFontConfig {
     );
   }
 
+  /// Gets the first (legacy) symbol URL for backward compatibility.
+  String get symbolUrl => sources.first.symbolUrl;
+
+  /// Gets the first (legacy) save directory for backward compatibility.
+  String get saveDir => sources.first.saveDir;
+
+  /// Gets the first (legacy) trim prefix for backward compatibility.
+  String get trimIconPrefix => sources.first.trimIconPrefix;
+
+  /// Gets the first (legacy) default icon size for backward compatibility.
+  int get defaultIconSize => sources.first.defaultIconSize;
+
+  /// Gets the first (legacy) null safety setting for backward compatibility.
+  bool get nullSafety => sources.first.nullSafety;
+
   /// Converts this configuration to a map representation.
-  ///
-  /// This is useful for serialization, debugging, or when you need to
-  /// pass the configuration to other parts of your system that expect
-  /// a map format.
-  ///
-  /// Returns:
-  /// - A map with string keys matching the pubspec.yaml configuration format
-  ///
-  /// Example:
-  /// ```dart
-  /// final map = config.toMap();
-  /// print(map['symbol_url']); // https://at.alicdn.com/t/font_123.js
-  /// ```
   Map<String, dynamic> toMap() {
+    if (sources.length == 1 && sources.first.name == 'iconfont') {
+      // Legacy single source format
+      return {
+        'symbol_url': sources.first.symbolUrl,
+        'save_dir': sources.first.saveDir,
+        'trim_icon_prefix': sources.first.trimIconPrefix,
+        'default_icon_size': sources.first.defaultIconSize,
+        'null_safety': sources.first.nullSafety,
+      };
+    }
+
+    // Multi-source format
     return {
-      'symbol_url': symbolUrl,
-      'save_dir': saveDir,
-      'trim_icon_prefix': trimIconPrefix,
-      'default_icon_size': defaultIconSize,
-      'null_safety': nullSafety,
+      'sources': sources.map((s) => s.toMap()).toList(),
     };
   }
 }

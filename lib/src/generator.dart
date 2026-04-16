@@ -339,7 +339,9 @@ class CodeGenerator {
 
     // Generate the Flutter code
     final template = _getTemplate(config);
+    final source = config.sources.first;
     String iconFile = template
+        .replaceAll('#className#', source.className)
         .replaceAll('#names#', names.join(', '))
         .replaceAll('#size#', config.defaultIconSize.toString())
         .replaceAll('#cases#', cases.toString().trimRight())
@@ -351,10 +353,14 @@ class CodeGenerator {
       await saveDir.create(recursive: true);
     }
 
-    // Clean existing files
+    // Clean existing iconfont files only
     await for (final file in saveDir.list()) {
-      if (file is File && file.path.endsWith('.dart')) {
-        await file.delete();
+      if (file is File) {
+        final fileName = path.basename(file.path);
+        // Only delete iconfont related files (iconfont.dart, iconfont.g.dart, etc.)
+        if (fileName.startsWith('iconfont') && fileName.endsWith('.dart')) {
+          await file.delete();
+        }
       }
     }
 
@@ -365,8 +371,133 @@ class CodeGenerator {
     print('Generated ${symbols.length} icons to ${outputFile.path}');
   }
 
+  /// Generates icon font code for a specific source.
+  ///
+  /// This method supports the new multi-source configuration format,
+  /// allowing each source to have its own output file and settings.
+  static Future<void> generateForSource(
+      List<SvgSymbol> symbols, IconFontSource source) async {
+    final names = <String>[];
+    final cases = StringBuffer();
+    final convertCases = StringBuffer();
+
+    // Generate enum names and cases
+    for (final symbol in symbols) {
+      final enumName = _generateEnumCaseForSource(symbol, source);
+      names.add(enumName);
+
+      // Generate switch case for build method
+      cases.writeln('      case IconNames.$enumName:');
+      cases.writeln('        svgXml = \'\'\'');
+      cases.write(_generateSvgCaseForSource(symbol, source));
+      cases.writeln('\'\'\';');
+      cases.writeln('        break;');
+
+      // Generate string to enum conversion case
+      convertCases.writeln('      case \'$enumName\':');
+      convertCases.writeln('        return IconNames.$enumName;');
+    }
+
+    // Generate the Flutter code
+    final template = _getTemplateForSource(source);
+    String iconFile = template
+        .replaceAll('#className#', source.className)
+        .replaceAll('#names#', names.join(', '))
+        .replaceAll('#size#', source.defaultIconSize.toString())
+        .replaceAll('#cases#', cases.toString().trimRight())
+        .replaceAll('#convertCases#', convertCases.toString().trimRight());
+
+    // Ensure save directory exists
+    final saveDir = Directory(source.saveDir);
+    if (!await saveDir.exists()) {
+      await saveDir.create(recursive: true);
+    }
+
+    // Clean existing iconfont files only for this source
+    await for (final file in saveDir.list()) {
+      if (file is File) {
+        final fileName = path.basename(file.path);
+        // Only delete files related to this source
+        if (fileName == source.outputFileName ||
+            (fileName.startsWith('${source.name}.') && fileName.endsWith('.dart'))) {
+          await file.delete();
+        }
+      }
+    }
+
+    // Write the generated file
+    final outputFile = File(path.join(source.saveDir, source.outputFileName));
+    await outputFile.writeAsString(iconFile);
+
+    print('Generated ${symbols.length} icons to ${outputFile.path}');
+  }
+
+  /// Generates an enum case name from an SVG symbol for a specific source.
+  static String _generateEnumCaseForSource(
+      SvgSymbol symbol, IconFontSource source) {
+    String iconId = symbol.id;
+
+    // Remove prefix if specified
+    if (source.trimIconPrefix.isNotEmpty) {
+      final prefixPattern = '${source.trimIconPrefix}-';
+      if (iconId.startsWith(prefixPattern)) {
+        iconId = iconId.substring(prefixPattern.length);
+      } else if (iconId.startsWith(source.trimIconPrefix)) {
+        iconId = iconId.substring(source.trimIconPrefix.length);
+      }
+    }
+
+    return _toCamelCase(iconId);
+  }
+
+  /// Generates the SVG case string for a symbol for a specific source.
+  static String _generateSvgCaseForSource(SvgSymbol symbol, IconFontSource source) {
+    final buffer = StringBuffer();
+    buffer.writeln(
+        '          <svg viewBox="${symbol.viewBox}" xmlns="http://www.w3.org/2000/svg">');
+
+    for (int i = 0; i < symbol.paths.length; i++) {
+      final path = symbol.paths[i];
+      buffer.write('            <path');
+      buffer.write(' d="${path.d}"');
+
+      if (path.fill != null) {
+        // Replace fill with dynamic color
+        buffer
+            .write(' fill="\${getColor($i, color, colors, \'${path.fill}\')}"');
+      } else {
+        buffer.write(' fill="\${getColor($i, color, colors, \'#333333\')}"');
+      }
+
+      // Add other attributes
+      for (final entry in path.attributes.entries) {
+        if (entry.key != 'd' && entry.key != 'fill') {
+          buffer.write(' ${entry.key}="${entry.value}"');
+        }
+      }
+
+      buffer.writeln(' />');
+    }
+
+    buffer.write('          </svg>');
+    return buffer.toString();
+  }
+
+  /// Gets the template for legacy config format (backward compatibility).
   static String _getTemplate(IconFontConfig config) {
-    if (config.nullSafety) {
+    return _getTemplateForConfig(config);
+  }
+
+  /// Gets the template for legacy IconFontConfig.
+  static String _getTemplateForConfig(IconFontConfig config) {
+    // For backward compatibility, use the first source's settings
+    final source = config.sources.first;
+    return _getTemplateForSource(source);
+  }
+
+  /// Gets the template for a specific source.
+  static String _getTemplateForSource(IconFontSource source) {
+    if (source.nullSafety) {
       return '''
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -379,9 +510,9 @@ extension IconNamesExtension on IconNames {
   String get name => toString().split('.').last;
 }
 
-/// IconFont widget for iconfont.cn icons
-class IconFont extends StatelessWidget {
-  const IconFont(
+/// #className# widget for iconfont.cn icons
+class #className# extends StatelessWidget {
+  const #className#(
     this.iconName, {
     super.key,
     this.size = #size#,
@@ -398,7 +529,7 @@ class IconFont extends StatelessWidget {
 
   static IconNames _getIconNames(dynamic iconName) {
     if (iconName is IconNames) return iconName;
-    
+
     switch (iconName.toString()) {
 #convertCases#
     }
@@ -414,7 +545,7 @@ class IconFont extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String svgXml;
-    
+
     switch (_iconName) {
 #cases#
       default:
@@ -442,14 +573,14 @@ extension IconNamesExtension on IconNames {
   String get name => toString().split('.').last;
 }
 
-/// IconFont widget for iconfont.cn icons
-class IconFont extends StatelessWidget {
+/// #className# widget for iconfont.cn icons
+class #className# extends StatelessWidget {
   final dynamic iconName;
   final double size;
   final String color;
   final List<String> colors;
 
-  IconFont(
+  #className#(
     this.iconName, {
     Key key,
     this.size = #size#,
@@ -461,7 +592,7 @@ class IconFont extends StatelessWidget {
 
   static IconNames _getIconNames(dynamic iconName) {
     if (iconName is IconNames) return iconName;
-    
+
     switch (iconName.toString()) {
 #convertCases#
     }
@@ -477,7 +608,7 @@ class IconFont extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String svgXml;
-    
+
     switch (_iconName) {
 #cases#
       default:
