@@ -232,11 +232,10 @@ class CodeGenerator {
       buffer.write(' d="${path.d}"');
 
       if (path.fill != null) {
-        // Replace fill with dynamic color
         buffer
-            .write(' fill="\${getColor($i, color, colors, \'${path.fill}\')}"');
+            .write(' fill="\${_getColor($i, color, colors, \'${path.fill}\')}"');
       } else {
-        buffer.write(' fill="\${getColor($i, color, colors, \'#333333\')}"');
+        buffer.write(' fill="\${_getColor($i, color, colors, \'#333333\')}"');
       }
 
       // Add other attributes
@@ -250,6 +249,35 @@ class CodeGenerator {
     }
 
     buffer.write('          </svg>');
+    return buffer.toString();
+  }
+
+  /// Generates the SVG body for a static getter (legacy config).
+  static String _generateSvgGetterBodyLegacy(SvgSymbol symbol, IconFontConfig config) {
+    final className = config.sources.first.className;
+    final buffer = StringBuffer();
+    buffer.writeln(
+        '    <svg viewBox="${symbol.viewBox}" xmlns="http://www.w3.org/2000/svg">');
+
+    for (int i = 0; i < symbol.paths.length; i++) {
+      final path = symbol.paths[i];
+      buffer.write('      <path');
+      buffer.write(' d="${path.d}"');
+
+      final defaultColor = path.fill ?? '#333333';
+      buffer.write(
+          ' fill="\${$className._getColor($i, color, colors, \'$defaultColor\')}"');
+
+      for (final entry in path.attributes.entries) {
+        if (entry.key != 'd' && entry.key != 'fill') {
+          buffer.write(' ${entry.key}="${entry.value}"');
+        }
+      }
+
+      buffer.writeln(' />');
+    }
+
+    buffer.write('    </svg>');
     return buffer.toString();
   }
 
@@ -316,36 +344,28 @@ class CodeGenerator {
   /// ```
   static Future<void> generateIconFont(
       List<SvgSymbol> symbols, IconFontConfig config) async {
-    final names = <String>[];
-    final cases = StringBuffer();
-    final convertCases = StringBuffer();
+    final source = config.sources.first;
+    final iconGetters = StringBuffer();
 
-    // Generate enum names and cases
+    // Generate static getters for each icon
     for (final symbol in symbols) {
-      final enumName = _generateEnumCase(symbol, config);
-      names.add(enumName);
-
-      // Generate switch case for build method
-      cases.writeln('      case IconNames.$enumName:');
-      cases.writeln('        svgXml = \'\'\'');
-      cases.write(_generateSvgCase(symbol, config));
-      cases.writeln('\'\'\';');
-      cases.writeln('        break;');
-
-      // Generate string to enum conversion case
-      convertCases.writeln('      case \'$enumName\':');
-      convertCases.writeln('        return IconNames.$enumName;');
+      final name = _generateEnumCase(symbol, config);
+      final svgBody = _generateSvgGetterBodyLegacy(symbol, config);
+      iconGetters.writeln(
+          '  static ${source.className}Data get $name => ${source.className}Data((color, colors) {');
+      iconGetters.writeln('    return \'\'\'');
+      iconGetters.write(svgBody);
+      iconGetters.writeln('\'\'\';');
+      iconGetters.writeln('  });');
+      iconGetters.writeln();
     }
 
     // Generate the Flutter code
     final template = _getTemplate(config);
-    final source = config.sources.first;
     String iconFile = template
         .replaceAll('#className#', source.className)
-        .replaceAll('#names#', names.join(', '))
         .replaceAll('#size#', config.defaultIconSize.toString())
-        .replaceAll('#cases#', cases.toString().trimRight())
-        .replaceAll('#convertCases#', convertCases.toString().trimRight());
+        .replaceAll('#iconGetters#', iconGetters.toString().trimRight());
 
     // Ensure save directory exists
     final saveDir = Directory(config.saveDir);
@@ -377,35 +397,27 @@ class CodeGenerator {
   /// allowing each source to have its own output file and settings.
   static Future<void> generateForSource(
       List<SvgSymbol> symbols, IconFontSource source) async {
-    final names = <String>[];
-    final cases = StringBuffer();
-    final convertCases = StringBuffer();
+    final iconGetters = StringBuffer();
 
-    // Generate enum names and cases
+    // Generate static getters for each icon
     for (final symbol in symbols) {
-      final enumName = _generateEnumCaseForSource(symbol, source);
-      names.add(enumName);
-
-      // Generate switch case for build method
-      cases.writeln('      case IconNames.$enumName:');
-      cases.writeln('        svgXml = \'\'\'');
-      cases.write(_generateSvgCaseForSource(symbol, source));
-      cases.writeln('\'\'\';');
-      cases.writeln('        break;');
-
-      // Generate string to enum conversion case
-      convertCases.writeln('      case \'$enumName\':');
-      convertCases.writeln('        return IconNames.$enumName;');
+      final name = _generateEnumCaseForSource(symbol, source);
+      final svgBody = _generateSvgGetterBody(symbol, source);
+      iconGetters.writeln(
+          '  static ${source.className}Data get $name => ${source.className}Data((color, colors) {');
+      iconGetters.writeln('    return \'\'\'');
+      iconGetters.write(svgBody);
+      iconGetters.writeln('\'\'\';');
+      iconGetters.writeln('  });');
+      iconGetters.writeln();
     }
 
     // Generate the Flutter code
     final template = _getTemplateForSource(source);
     String iconFile = template
         .replaceAll('#className#', source.className)
-        .replaceAll('#names#', names.join(', '))
         .replaceAll('#size#', source.defaultIconSize.toString())
-        .replaceAll('#cases#', cases.toString().trimRight())
-        .replaceAll('#convertCases#', convertCases.toString().trimRight());
+        .replaceAll('#iconGetters#', iconGetters.toString().trimRight());
 
     // Ensure save directory exists
     final saveDir = Directory(source.saveDir);
@@ -462,11 +474,10 @@ class CodeGenerator {
       buffer.write(' d="${path.d}"');
 
       if (path.fill != null) {
-        // Replace fill with dynamic color
         buffer
-            .write(' fill="\${getColor($i, color, colors, \'${path.fill}\')}"');
+            .write(' fill="\${_getColor($i, color, colors, \'${path.fill}\')}"');
       } else {
-        buffer.write(' fill="\${getColor($i, color, colors, \'#333333\')}"');
+        buffer.write(' fill="\${_getColor($i, color, colors, \'#333333\')}"');
       }
 
       // Add other attributes
@@ -480,6 +491,34 @@ class CodeGenerator {
     }
 
     buffer.write('          </svg>');
+    return buffer.toString();
+  }
+
+  /// Generates the SVG body for a static getter (new style).
+  static String _generateSvgGetterBody(SvgSymbol symbol, IconFontSource source) {
+    final buffer = StringBuffer();
+    buffer.writeln(
+        '    <svg viewBox="${symbol.viewBox}" xmlns="http://www.w3.org/2000/svg">');
+
+    for (int i = 0; i < symbol.paths.length; i++) {
+      final path = symbol.paths[i];
+      buffer.write('      <path');
+      buffer.write(' d="${path.d}"');
+
+      final defaultColor = path.fill ?? '#333333';
+      buffer.write(
+          ' fill="\${${source.className}._getColor($i, color, colors, \'$defaultColor\')}"');
+
+      for (final entry in path.attributes.entries) {
+        if (entry.key != 'd' && entry.key != 'fill') {
+          buffer.write(' ${entry.key}="${entry.value}"');
+        }
+      }
+
+      buffer.writeln(' />');
+    }
+
+    buffer.write('    </svg>');
     return buffer.toString();
   }
 
@@ -502,61 +541,54 @@ class CodeGenerator {
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-enum IconNames {
-  #names#
+extension _ColorToHex on Color {
+  String _toHex({bool includeAlpha = false}) {
+    final int r = (this.r * 255).round().clamp(0, 255);
+    final int g = (this.g * 255).round().clamp(0, 255);
+    final int b = (this.b * 255).round().clamp(0, 255);
+    final String hex = '\${r.toRadixString(16).padLeft(2, '0')}'
+        '\${g.toRadixString(16).padLeft(2, '0')}'
+        '\${b.toRadixString(16).padLeft(2, '0')}';
+    if (includeAlpha) {
+      final int a = (this.a * 255).round().clamp(0, 255);
+      return '#\${a.toRadixString(16).padLeft(2, '0')}\$hex';
+    }
+    return '#\$hex';
+  }
 }
 
-extension IconNamesExtension on IconNames {
-  String get name => toString().split('.').last;
-}
+/// Icon data holder for #className# icons.
+class #className#Data {
+  const #className#Data(this._svgBuilder, {this.defaultSize = #size#});
 
-/// #className# widget for iconfont.cn icons
-class #className# extends StatelessWidget {
-  const #className#(
-    this.iconName, {
-    super.key,
-    this.size = #size#,
-    this.color,
-    this.colors,
-  });
+  final String Function(Color? color, List<Color>? colors) _svgBuilder;
+  final double defaultSize;
 
-  final dynamic iconName;
-  final double size;
-  final String? color;
-  final List<String>? colors;
-
-  IconNames get _iconName => _getIconNames(iconName);
-
-  static IconNames _getIconNames(dynamic iconName) {
-    if (iconName is IconNames) return iconName;
-
-    switch (iconName.toString()) {
-#convertCases#
-    }
-    return IconNames.values.first;
-  }
-
-  static String getColor(int index, String? color, List<String>? colors, String defaultColor) {
-    if (color?.isNotEmpty == true) return color!;
-    if (colors != null && colors.length > index) return colors[index];
-    return defaultColor;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final String svgXml;
-
-    switch (_iconName) {
-#cases#
-      default:
-        svgXml = '';
-    }
-
+  /// Render this icon as an SVG widget.
+  Widget svg({double? size, Color? color, List<Color>? colors, Key? key}) {
+    final s = size ?? defaultSize;
     return SvgPicture.string(
-      svgXml,
-      width: size,
-      height: size,
+      _svgBuilder(color, colors),
+      width: s,
+      height: s,
+      key: key,
     );
+  }
+}
+
+/// #className# — generated iconfont.cn icon accessors.
+///
+/// Usage:
+///   #className#.aRingtyou.svg(size: 24, color: Colors.red)
+class #className# {
+  const #className#._();
+
+#iconGetters#
+
+  static String _getColor(int index, Color? color, List<Color>? colors, String defaultColor) {
+    if (color != null) return color._toHex(includeAlpha: true);
+    if (colors != null && colors.length > index) return colors[index]._toHex(includeAlpha: true);
+    return defaultColor;
   }
 }
 ''';
@@ -565,61 +597,54 @@ class #className# extends StatelessWidget {
 import 'package:flutter/widgets.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-enum IconNames {
-  #names#
+extension _ColorToHex on Color {
+  String _toHex({bool includeAlpha = false}) {
+    final int r = (this.r * 255).round().clamp(0, 255);
+    final int g = (this.g * 255).round().clamp(0, 255);
+    final int b = (this.b * 255).round().clamp(0, 255);
+    final String hex = '\${r.toRadixString(16).padLeft(2, '0')}'
+        '\${g.toRadixString(16).padLeft(2, '0')}'
+        '\${b.toRadixString(16).padLeft(2, '0')}';
+    if (includeAlpha) {
+      final int a = (this.a * 255).round().clamp(0, 255);
+      return '#\${a.toRadixString(16).padLeft(2, '0')}\$hex';
+    }
+    return '#\$hex';
+  }
 }
 
-extension IconNamesExtension on IconNames {
-  String get name => toString().split('.').last;
-}
+/// Icon data holder for #className# icons.
+class #className#Data {
+  const #className#Data(this._svgBuilder, {this.defaultSize = #size#});
 
-/// #className# widget for iconfont.cn icons
-class #className# extends StatelessWidget {
-  final dynamic iconName;
-  final double size;
-  final String color;
-  final List<String> colors;
+  final String Function(Color color, List<Color> colors) _svgBuilder;
+  final double defaultSize;
 
-  #className#(
-    this.iconName, {
-    Key key,
-    this.size = #size#,
-    this.color,
-    this.colors,
-  }) : super(key: key);
-
-  IconNames get _iconName => _getIconNames(iconName);
-
-  static IconNames _getIconNames(dynamic iconName) {
-    if (iconName is IconNames) return iconName;
-
-    switch (iconName.toString()) {
-#convertCases#
-    }
-    return IconNames.values.first;
-  }
-
-  static String getColor(int index, String color, List<String> colors, String defaultColor) {
-    if (color != null && color.isNotEmpty) return color;
-    if (colors != null && colors.length > index) return colors[index];
-    return defaultColor;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    String svgXml;
-
-    switch (_iconName) {
-#cases#
-      default:
-        svgXml = '';
-    }
-
+  /// Render this icon as an SVG widget.
+  Widget svg({double size, Color color, List<Color> colors, Key key}) {
+    final s = size ?? defaultSize;
     return SvgPicture.string(
-      svgXml,
-      width: size,
-      height: size,
+      _svgBuilder(color, colors),
+      width: s,
+      height: s,
+      key: key,
     );
+  }
+}
+
+/// #className# — generated iconfont.cn icon accessors.
+///
+/// Usage:
+///   #className#.aRingtyou.svg(size: 24, color: Colors.red)
+class #className# {
+  const #className#._();
+
+#iconGetters#
+
+  static String _getColor(int index, Color color, List<Color> colors, String defaultColor) {
+    if (color != null) return color._toHex(includeAlpha: true);
+    if (colors != null && colors.length > index) return colors[index]._toHex(includeAlpha: true);
+    return defaultColor;
   }
 }
 ''';
