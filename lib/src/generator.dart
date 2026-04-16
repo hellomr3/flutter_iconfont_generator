@@ -565,7 +565,7 @@ class #className#Data {
   final double defaultSize;
 
   /// Render this icon as an SVG widget.
-  Widget svg({double? size, Color? color, List<Color>? colors, Key? key}) {
+  Widget call({double? size, Color? color, List<Color>? colors, Key? key}) {
     final s = size ?? defaultSize;
     return SvgPicture.string(
       _svgBuilder(color, colors),
@@ -574,12 +574,16 @@ class #className#Data {
       key: key,
     );
   }
+
+  /// Alias for [call].
+  Widget svg({double? size, Color? color, List<Color>? colors, Key? key}) =>
+      call(size: size, color: color, colors: colors, key: key);
 }
 
 /// #className# — generated iconfont.cn icon accessors.
 ///
 /// Usage:
-///   #className#.aRingtyou.svg(size: 24, color: Colors.red)
+///   #className#.aRingtyou(size: 24, color: Colors.red)
 class #className# {
   const #className#._();
 
@@ -621,7 +625,7 @@ class #className#Data {
   final double defaultSize;
 
   /// Render this icon as an SVG widget.
-  Widget svg({double size, Color color, List<Color> colors, Key key}) {
+  Widget call({double size, Color color, List<Color> colors, Key key}) {
     final s = size ?? defaultSize;
     return SvgPicture.string(
       _svgBuilder(color, colors),
@@ -630,12 +634,16 @@ class #className#Data {
       key: key,
     );
   }
+
+  /// Alias for [call].
+  Widget svg({double size, Color color, List<Color> colors, Key key}) =>
+      call(size: size, color: color, colors: colors, key: key);
 }
 
 /// #className# — generated iconfont.cn icon accessors.
 ///
 /// Usage:
-///   #className#.aRingtyou.svg(size: 24, color: Colors.red)
+///   #className#.aRingtyou(size: 24, color: Colors.red)
 class #className# {
   const #className#._();
 
